@@ -1,4 +1,5 @@
-from flask import Flask
+
+from flask import Flask, jsonify
 import os
 
 app = Flask(__name__)
@@ -7,7 +8,7 @@ app = Flask(__name__)
 @app.route('/home', methods=['GET'])
 def home():
     server_id = os.environ.get('SERVER_ID', 'Unknown')
-    return f"Hello from Server: {server_id}"
+    return jsonify({"message": f"Hello from Server: {server_id}", "status": "successful"}), 200
 
 
 @app.route('/heartbeat', methods=['GET'])
