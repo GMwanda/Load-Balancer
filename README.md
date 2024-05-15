@@ -1,52 +1,130 @@
-# Task 1 - Flask Application Dockerization
+---
 
-This project demonstrates how to Dockerize a Flask application, making it easy to deploy and run in a containerized environment.
+# Flask Consistent Hash Map Application
+
+This is a Flask application that implements a consistent hash map for distributing requests across multiple servers. The application provides endpoints for basic health checks and mapping requests to servers.
+
+## Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Endpoints](#endpoints)
+- [Docker Setup](#docker-setup)
+- [Environment Variables](#environment-variables)
+- [License](#license)
 
 ## Prerequisites
 
-- Docker: Ensure that Docker is installed on your system. You can download and install Docker from [here](https://www.docker.com/get-started).
+Ensure you have the following installed:
+- Python 3.9 or higher
+- Docker
 
-## Getting Started
+## Installation
 
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd <repository-directory>
+1. **Clone the repository**:
+   ```sh
+   git clone <repository_url>
+   cd <repository_name>
    ```
 
-2. Build the Docker image:
-   ```bash
-   docker build -t my-flask-app .
+2. **Install dependencies**:
+   ```sh
+   pip install -r requirements.txt
    ```
 
-3. Run the Docker container:
-   ```bash
-   docker run -d -p 5000:5000 --name my-flask-container my-flask-app
+## Usage
+
+### Running the Application Locally
+
+1. **Set the `SERVER_ID` environment variable** (optional):
+   ```sh
+   export SERVER_ID="Server1"
    ```
 
-4. Access the Flask application:
-   Open a web browser and navigate to `http://localhost:5000` to access the Flask application running in the Docker container.
-
-## Remote Access Instructions
-- To access the Flask application remotely from another device on the same network.
-- On Linux: Use the ifconfig or ip addr command to find the IP address associated with the network interface (e.g., wlp2s0, eth0).
-- On Windows: Use the ipconfig command to find the IPv4 address associated with the active network adapter (Ethernet, Wi-Fi).
-- Once you have the host machine's IP address, access the Flask application from another device's web browser using the following URL format:
-
-   ```bash
-   http://<host-ip>:5000
+2. **Run the Flask application**:
+   ```sh
+   python Task.py
    ```
 
-- Replace <host-ip> with the IP address of the host machine running Docker. You should now be able to access the Flask application remotely from any device on the same network.
+### Running the Application with Docker
 
-## Customization
+1. **Build the Docker image**:
+   ```sh
+   docker build -t flask-consistent-hash-map .
+   ```
 
-- **Python Script**: Modify the `Test.py` file to customize the Flask application logic and routes.
-- **Dockerfile**: Customize the Dockerfile to include additional dependencies or configurations as needed.
-- **Environment Variables**: You can set environment variables in the Dockerfile or when running the container to configure the Flask application.
+2. **Run the Docker container**:
+   ```sh
+   docker run -p 5000:5000 -e SERVER_ID="Server1" flask-consistent-hash-map
+   ```
 
-## Troubleshooting
+## Endpoints
 
-- If you encounter any issues during the Docker build or run process, refer to the error messages for troubleshooting guidance.
-- Make sure that Docker is installed correctly and running on your system.
+### `/home` (GET)
+Returns a greeting message with the server ID.
 
+**Response**:
+```json
+{
+  "message": "Hello from Server: <SERVER_ID>",
+  "status": "successful"
+}
+```
+
+### `/heartbeat` (GET)
+Returns a simple health check message.
+
+**Response**:
+```
+Hello
+```
+
+### `/map_request` (GET)
+Maps a request ID to a server using the consistent hash map.
+
+**Query Parameters**:
+- `id` (integer): The request ID to be mapped.
+
+**Response**:
+```json
+{
+  "request_id": <request_id>,
+  "mapped_server": <server_id>
+}
+```
+
+**Error Response**:
+```json
+{
+  "error": "Request ID is required"
+}
+```
+or
+```json
+{
+  "error": "<error_message>"
+}
+```
+
+## Docker Setup
+
+The Docker setup is defined in the `Dockerfile` and includes the following steps:
+
+1. Use the Python 3.9-slim base image.
+2. Set the working directory to `/app`.
+3. Copy the application files to the working directory.
+4. Install Flask using `pip`.
+5. Expose port 5000.
+6. Set the `SERVER_ID` environment variable.
+7. Run the Flask application using the command `CMD ["python", "Task.py"]`.
+
+## Environment Variables
+
+- `SERVER_ID`: Specifies the ID of the server. Defaults to `DefaultServer` if not set.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
