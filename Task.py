@@ -157,8 +157,8 @@ def remove_replicas():
     for hostname in to_remove:
         if hostname in replicas:
             replicas.remove(hostname)
-            subprocess.run(["docker", "stop", hostname])
-            subprocess.run(["docker", "rm", hostname])
+            subprocess.run(["docker", "stop", hostname], check=True)
+            subprocess.run(["docker", "rm", hostname], check=True)
 
     return jsonify({
         "message": {
