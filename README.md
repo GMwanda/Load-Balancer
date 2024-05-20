@@ -1,130 +1,141 @@
----
+# Flask Load Balancer with Consistent Hashing
 
-# Flask Consistent Hash Map Application
+This project implements a simple load balancer using Flask and Consistent Hashing. It supports dynamically adding and removing replicas (server containers) and provides endpoints to map requests to replicas based on consistent hashing.
 
-This is a Flask application that implements a consistent hash map for distributing requests across multiple servers. The application provides endpoints for basic health checks and mapping requests to servers.
+## Features
 
-## Table of Contents
+- Consistent Hashing for request mapping
+- Dynamic addition and removal of server replicas
+- Docker integration for container management
+- Simple API endpoints for interaction
 
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Endpoints](#endpoints)
-- [Docker Setup](#docker-setup)
-- [Environment Variables](#environment-variables)
-- [License](#license)
+## Requirements
 
-## Prerequisites
-
-Ensure you have the following installed:
-- Python 3.9 or higher
 - Docker
+- Docker Compose
+- Python 3.9+
+- Flask
 
-## Installation
+## Setup
 
-1. **Clone the repository**:
+1. **Clone the repository:**
    ```sh
-   git clone <repository_url>
-   cd <repository_name>
+   git clone <repository-url>
+   cd <repository-directory>
    ```
 
-2. **Install dependencies**:
+2. **Build and run the Docker containers:**
    ```sh
-   pip install -r requirements.txt
+   docker-compose up --build
    ```
 
-## Usage
-
-### Running the Application Locally
-
-1. **Set the `SERVER_ID` environment variable** (optional):
+3. **Verify the setup:**
+   Open your browser or a tool like Postman and access the following URL:
    ```sh
-   export SERVER_ID="Server1"
+   http://<host-ip>:5000/heartbeat
+   ```
+   You should receive a `Hello` response.
+
+## API Endpoints
+
+### 1. Home
+- **URL:** `/home`
+- **Method:** `GET`
+- **Response:**
+  ```json
+  {
+    "message": "Hello from Server: <server_id>",
+    "status": "successful"
+  }
+  ```
+
+### 2. Heartbeat
+- **URL:** `/heartbeat`
+- **Method:** `GET`
+- **Response:** `Hello`
+
+### 3. Map Request
+- **URL:** `/map_request`
+- **Method:** `GET`
+- **Params:** `id` (integer, required)
+- **Response:**
+  ```json
+  {
+    "request_id": <request_id>,
+    "mapped_server": <server_id>
+  }
+  ```
+
+### 4. Get Replicas
+- **URL:** `/rep`
+- **Method:** `GET`
+- **Response:**
+  ```json
+  {
+    "N": <number_of_replicas>,
+    "replicas": ["<replica1>", "<replica2>", ...]
+  }
+  ```
+
+### 5. Add Replicas
+- **URL:** `/add`
+- **Method:** `POST`
+- **Body:**
+  ```json
+  {
+    "n": <number_of_replicas_to_add>,
+    "hostnames": ["<hostname1>", "<hostname2>", ...]  // Optional
+  }
+  ```
+- **Response:**
+  ```json
+  {
+    "message": {
+      "N": <total_number_of_replicas>,
+      "replicas": ["<replica1>", "<replica2>", ...]
+    },
+    "status": "successful"
+  }
+  ```
+
+### 6. Remove Replicas
+- **URL:** `/rm`
+- **Method:** `DELETE`
+- **Body:**
+  ```json
+  {
+    "n": <number_of_replicas_to_remove>,
+    "hostnames": ["<hostname1>", "<hostname2>", ...]  // Optional
+  }
+  ```
+- **Response:**
+  ```json
+  {
+    "message": {
+      "N": <total_number_of_replicas>,
+      "replicas": ["<remaining_replica1>", "<remaining_replica2>", ...]
+    },
+    "status": "successful"
+  }
+  ```
+
+## Accessing the Endpoints from Another Device
+
+Use the host machine's IP address to access the endpoints. For example:
+   ```sh
+   http://<host-ip>:5000/add
    ```
 
-2. **Run the Flask application**:
+## Troubleshooting
+
+1. **Docker Command Not Found:**
+   Ensure Docker is installed and the Docker daemon is running. Verify by running:
    ```sh
-   python Task.py
+   docker --version
    ```
 
-### Running the Application with Docker
+2. **Port Access Issues:**
+   Ensure no firewall or security software is blocking incoming connections on port 5000. Verify network configuration and connectivity between devices.
 
-1. **Build the Docker image**:
-   ```sh
-   docker build -t flask-consistent-hash-map .
-   ```
-
-2. **Run the Docker container**:
-   ```sh
-   docker run -p 5000:5000 -e SERVER_ID="Server1" flask-consistent-hash-map
-   ```
-
-## Endpoints
-
-### `/home` (GET)
-Returns a greeting message with the server ID.
-
-**Response**:
-```json
-{
-  "message": "Hello from Server: <SERVER_ID>",
-  "status": "successful"
-}
-```
-
-### `/heartbeat` (GET)
-Returns a simple health check message.
-
-**Response**:
-```
-Hello
-```
-
-### `/map_request` (GET)
-Maps a request ID to a server using the consistent hash map.
-
-**Query Parameters**:
-- `id` (integer): The request ID to be mapped.
-
-**Response**:
-```json
-{
-  "request_id": <request_id>,
-  "mapped_server": <server_id>
-}
-```
-
-**Error Response**:
-```json
-{
-  "error": "Request ID is required"
-}
-```
-or
-```json
-{
-  "error": "<error_message>"
-}
-```
-
-## Docker Setup
-
-The Docker setup is defined in the `Dockerfile` and includes the following steps:
-
-1. Use the Python 3.9-slim base image.
-2. Set the working directory to `/app`.
-3. Copy the application files to the working directory.
-4. Install Flask using `pip`.
-5. Expose port 5000.
-6. Set the `SERVER_ID` environment variable.
-7. Run the Flask application using the command `CMD ["python", "Task.py"]`.
-
-## Environment Variables
-
-- `SERVER_ID`: Specifies the ID of the server. Defaults to `DefaultServer` if not set.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
+3. **Container Management Errors:**
+   Ensure Docker Compose is properly set up and configured. Check the Docker Compose file for correct port mappings and volume mounts.
