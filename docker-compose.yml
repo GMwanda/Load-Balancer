@@ -11,7 +11,7 @@ services:
       - SERVER_ID=LoadBalancer
 
   web_server:
-    image: DefaultServer  # replace with your actual web server image
+    image: web_server_image  # replace with your actual web server image
     environment:
       - SERVER_ID=WebServer
     expose:

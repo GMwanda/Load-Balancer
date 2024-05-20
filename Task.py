@@ -8,7 +8,7 @@ import subprocess
 app = Flask(__name__)
 
 # Constants for consistent hash map
-N = 3  # Number of server containers
+N = 3   # Number of server containers
 SLOTS = 512  # Total number of slots in the consistent hash map
 K = int(math.log2(SLOTS))  # Number of virtual servers for each server container
 
@@ -37,7 +37,7 @@ class ConsistentHashMap:
                 while self.hash_map[slot] is not None:
                     slot = (slot + 1) % self.num_slots
                     if slot == original_slot:
-                        raise Exception("Hash map is full, cannot find empty slot")
+                        raise Exception("Hash map is full, cannot find emptyslot")
                 self.hash_map[slot] = (server_id, virtual_id)
                 self.servers[server_id].append(slot)
 
