@@ -1,6 +1,9 @@
-from flask import Flask, jsonify, request
 import os
 import math
+from flask import Flask, request, jsonify
+import random
+import string
+import subprocess
 
 app = Flask(__name__)
 
@@ -76,6 +79,92 @@ def map_request():
         return jsonify({"request_id": request_id, "mapped_server": server_id}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# Assuming a simple in-memory structure to keep track of replicas
+replicas = []
+
+
+def random_hostname(length=5):
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+
+
+@app.route('/rep', methods=['GET'])
+def get_replicas():
+    return jsonify({
+        "N": len(replicas),
+        "replicas": replicas
+    })
+
+
+@app.route('/add', methods=['POST'])
+def add_replicas():
+    data = request.get_json()
+    n = data.get("n")
+    hostnames = data.get("hostnames", [])
+
+    if len(hostnames) > n:
+        return jsonify({"error": "Number of hostnames exceeds number of instances to add"}), 400
+
+    new_replicas = []
+    for i in range(n):
+        if i < len(hostnames):
+            hostname = hostnames[i]
+        else:
+            hostname = random_hostname()
+        new_replicas.append(hostname)
+        subprocess.run(["docker", "run", "-d", "--name", hostname,
+                        "web_server_image"])  # replace "web_server_image" with actual image name
+    replicas.extend(new_replicas)
+    return jsonify({
+        "message": {
+            "N": len(replicas),
+            "replicas": replicas
+        },
+        "status": "successful"
+    }), 200
+
+
+@app.route('/rm', methods=['DELETE'])
+def remove_replicas():
+    data = request.get_json()
+    n = data.get("n")
+    hostnames = data.get("hostnames", [])
+
+    if len(hostnames) > n:
+        return jsonify({"error": "Number of hostnames exceeds number of instances to remove"}), 400
+
+    to_remove = set()
+    if hostnames:
+        to_remove.update(hostnames)
+    else:
+        to_remove.update(random.sample(replicas, min(n, len(replicas))))
+
+    for hostname in to_remove:
+        if hostname in replicas:
+            replicas.remove(hostname)
+            subprocess.run(["docker", "stop", hostname])
+            subprocess.run(["docker", "rm", hostname])
+
+    return jsonify({
+        "message": {
+            "N": len(replicas),
+            "replicas": replicas
+        },
+        "status": "successful"
+    }), 200
+
+
+@app.route('/<path:path>', methods=['GET'])
+def route_request(path):
+    if not replicas:
+        return jsonify({"error": "No replicas available"}), 503
+
+    chosen_replica = replicas[hash(path) % len(replicas)]
+    return jsonify({
+        "path": path,
+        "replica": chosen_replica
+    })
 
 
 if __name__ == '__main__':
