@@ -4,6 +4,7 @@ from flask import Flask, request, jsonify
 import random
 import string
 import subprocess
+import docker
 
 app = Flask(__name__)
 
@@ -81,9 +82,8 @@ def map_request():
         return jsonify({"error": str(e)}), 500
 
 
-# Assuming a simple in-memory structure to keep track of replicas
+# Assuming a simple in-memory structure to keep track of replica
 replicas = []
-
 
 def random_hostname(length=5):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
@@ -96,7 +96,7 @@ def get_replicas():
         "replicas": replicas
     })
 
-
+docker_client = docker.from_env()
 @app.route('/add', methods=['POST'])
 def add_replicas():
     data = request.get_json()
@@ -112,9 +112,23 @@ def add_replicas():
             hostname = hostnames[i]
         else:
             hostname = random_hostname()
-        new_replicas.append(hostname)
-        subprocess.run(["docker", "run", "-d", "--name", hostname,
-                        "web_server_image"])  # replace "web_server_image" with actual image name
+
+        try:
+            # Remove the container if it already exists
+            existing_container = docker_client.containers.get(hostname)
+            existing_container.stop()
+            existing_container.remove()
+        except docker.errors.NotFound:
+            pass  # Container does not exist, no need to remove it
+
+            # Run a new container
+        container = docker_client.containers.run("web_server_image", name=hostname,
+                                                 detach=True)  # replace "web_server_image" with actual image name
+        new_replicas.append(container.name)
+
+        # new_replicas.append(hostname)
+        # subprocess.run(["docker", "run", "-d", "--name", hostname,
+        #                 "web_server_image"])  # replace "web_server_image" with actual image name
     replicas.extend(new_replicas)
     return jsonify({
         "message": {
