@@ -9,7 +9,7 @@ import docker
 app = Flask(__name__)
 
 # Constants for consistent hash map
-N = 3   # Number of server containers
+N = 3  # Number of server containers
 SLOTS = 512  # Total number of slots in the consistent hash map
 K = int(math.log2(SLOTS))  # Number of virtual servers for each server container
 
@@ -85,6 +85,7 @@ def map_request():
 # Assuming a simple in-memory structure to keep track of replica
 replicas = []
 
+
 def random_hostname(length=5):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
@@ -96,7 +97,10 @@ def get_replicas():
         "replicas": replicas
     })
 
+
 docker_client = docker.from_env()
+
+
 @app.route('/add', methods=['POST'])
 def add_replicas():
     data = request.get_json()
