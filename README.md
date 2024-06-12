@@ -11,30 +11,144 @@ This project implements a simple load balancer using Flask and Consistent Hashin
 
 ## Requirements
 
+- Git
+- Make
 - Docker
 - Docker Compose
 - Python 3.9+
 - Flask
 
+## Prerequisites
+
+Before you begin, ensure you have the following installed on your system:
+
+- Git
+- Make
+- Docker
+- Docker Compose
+
+## Installation
+
+Follow these steps to get the project up and running:
+
+### 1. Clone the Repository
+
+Open your terminal and clone the repository:
+
+```sh
+git clone https://github.com/GMwanda/Load-Balancer.git
+cd Load-Balancer
+```
+
+### 2. Install Make
+
+If `make` is not installed, install it using the following command:
+
+For Ubuntu/Debian:
+```sh
+sudo apt update
+sudo apt install make
+```
+
+For MacOS:
+```sh
+brew install make
+```
+
+### 3. Install Docker
+
+Follow the instructions on the [Docker website](https://docs.docker.com/get-docker/) to install Docker for your operating system.
+
+For Ubuntu/Debian:
+```sh
+sudo apt update
+sudo apt install docker.io
+```
+
+### 4. Install Docker Compose
+
+Follow the instructions on the [Docker Compose website](https://docs.docker.com/compose/install/) to install Docker Compose.
+
+For Ubuntu/Debian:
+```sh
+sudo apt install docker-compose
+```
+
 ## Setup
 
-1. **Clone the repository:**
-   ```sh
-   git clone <repository-url>
-   cd <repository-directory>
-   ```
+1. **Build the Docker Image**
 
-2. **Build and run the Docker containers:**
-   ```sh
-   docker-compose up --build
-   ```
+Run the following command to build the Docker image:
 
-3. **Verify the setup:**
-   Open your browser or a tool like Postman and access the following URL:
-   ```sh
-   http://<host-ip>:5000/heartbeat
-   ```
-   You should receive a `Hello` response.
+```sh
+make build
+```
+
+2. **Run the Project**
+
+Start the Docker containers using the following command:
+
+```sh
+make up
+```
+
+### Handling Errors
+
+If you encounter errors, such as orphan containers, you can resolve them by running:
+
+```sh
+docker-compose down --remove-orphans
+```
+
+Then, rebuild and restart the containers using:
+
+```sh
+sudo make rebuild
+```
+
+## Accessing the Application
+
+Once the containers are running, you can access the Flask application at `http://localhost:5000`.
+
+## Stopping the Project
+
+To stop the running containers, use:
+
+```sh
+make down
+```
+
+## Additional Makefile Commands
+
+- **View Logs**:
+  ```sh
+  make logs
+  ```
+
+- **Run Containers in Detached Mode**:
+  ```sh
+  make up-detached
+  ```
+
+- **Stop Containers**:
+  ```sh
+  make stop
+  ```
+
+- **Remove Containers**:
+  ```sh
+  make rm
+  ```
+
+## Verify the Setup
+
+Open your browser or a tool like Postman and access the following URL:
+
+```sh
+http://<host-ip>:5000/heartbeat
+```
+
+You should receive a `Hello` response.
 
 ## API Endpoints
 
@@ -91,7 +205,7 @@ This project implements a simple load balancer using Flask and Consistent Hashin
   ```json
   {
     "message": {
-      "N": <total_number_of_replicas>,
+      "N": <total_number_of replicas>,
       "replicas": ["<replica1>", "<replica2>", ...]
     },
     "status": "successful"
@@ -126,16 +240,10 @@ Use the host machine's IP address to access the endpoints. For example:
    http://<host-ip>:5000/add
    ```
 
-## Troubleshooting
+## Contributing
 
-1. **Docker Command Not Found:**
-   Ensure Docker is installed and the Docker daemon is running. Verify by running:
-   ```sh
-   docker --version
-   ```
+Contributions are welcome! Please fork the repository and submit a pull request for any improvements.
 
-2. **Port Access Issues:**
-   Ensure no firewall or security software is blocking incoming connections on port 5000. Verify network configuration and connectivity between devices.
+## License
 
-3. **Container Management Errors:**
-   Ensure Docker Compose is properly set up and configured. Check the Docker Compose file for correct port mappings and volume mounts.
+This project is licensed under the MIT License. See the LICENSE file for more details.
