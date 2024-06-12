@@ -116,24 +116,35 @@ def add_replicas(n):
 @app.route('/rm', methods=['DELETE'])
 def remove_replicas():
     data = request.get_json()
-    n = data.get("n")
+    n = data.get("n", 0)
     hostnames = data.get("hostnames", [])
 
-    if len(hostnames) > n:
+    # Validate input
+    if n <= 0 and not hostnames:
+        return jsonify({"error": "Either 'n' or 'hostnames' must be specified"}), 400
+
+    if len(hostnames) > n > 0:
         return jsonify({"error": "Number of hostnames exceeds number of instances to remove"}), 400
 
-    to_remove = set()
-    if hostnames:
-        to_remove.update(hostnames)
-    else:
-        to_remove.update(random.sample(replicas, min(n, len(replicas))))
+    to_remove = set(hostnames)
+
+    # If n is specified and more instances need to be removed, add random instances
+    if n > len(hostnames):
+        remaining_count = n - len(hostnames)
+        additional_replicas = random.sample(replicas, min(remaining_count, len(replicas) - len(hostnames)))
+        to_remove.update(additional_replicas)
 
     for hostname in to_remove:
         if hostname in replicas:
             replicas.remove(hostname)
-            subprocess.run(["docker", "stop", hostname], check=True)
-            subprocess.run(["docker", "rm", hostname], check=True)
-    log_to_browser("Replica removed")
+            try:
+                subprocess.run(["docker", "stop", hostname], check=True)
+                subprocess.run(["docker", "rm", hostname], check=True)
+            except subprocess.CalledProcessError as e:
+                log_to_browser(f"Failed to remove container {hostname}: {str(e)}")
+                return jsonify({"error": f"Failed to remove container {hostname}: {str(e)}"}), 500
+
+    log_to_browser("Replicas removed")
     return jsonify({
         "message": {
             "N": len(replicas),
