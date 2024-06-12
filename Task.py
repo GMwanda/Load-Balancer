@@ -1,17 +1,18 @@
 import os
 import math
 from flask import Flask, request, jsonify
-from ConsistentHash import ConsistentHashMap
+from ConsistentHash import ConsistentHashMap 
 import random
 import string
 import subprocess
 import docker
 from flask_socketio import SocketIO
+import logging
 
 app = Flask(__name__)
 
 # Constants for consistent hash map
-N = 3   # Number of server containers
+N = 3  # Number of server containers
 SLOTS = 512  # Total number of slots in the consistent hash map
 K = int(math.log2(SLOTS))  # Number of virtual servers for each server container
 
@@ -50,6 +51,7 @@ def map_request():
 # Assuming a simple in-memory structure to keep track of replica
 replicas = []
 
+
 def random_hostname(length=5):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
@@ -60,47 +62,55 @@ def get_replicas():
         "replicas": replicas
     })
 
+
 docker_client = docker.from_env()
-@app.route('/add', methods=['POST'])
-def add_replicas():
-    data = request.get_json()
-    n = data.get("n")
-    hostnames = data.get("hostnames", [])
 
-    if len(hostnames) > n:
-        return jsonify({"error": "Number of hostnames exceeds number of instances to add"}), 400
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
-    new_replicas = []
-    for i in range(n):
-        if i < len(hostnames):
-            hostname = hostnames[i]
-        else:
-            hostname = random_hostname()
 
-        try:
-            # Remove the container if it already exists
-            existing_container = docker_client.containers.get(hostname)
-            existing_container.stop()
-            existing_container.remove()
-        except docker.errors.NotFound:
-            pass  # Container does not exist, no need to remove it
+def random_hostname(length=10):
+    """Generate a random hostname."""
+    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
 
-            # Run a new container
-        container = docker_client.containers.run("load-balancer_web_server1", name=hostname,
-                                                 detach=True)  # replace "web_server_image" with actual image name
-        new_replicas.append(container.name)
 
-        # new_replicas.append(hostname)
-        # subprocess.run(["docker", "run", "-d", "--name", hostname,
-        #                 "web_server_image"])  # replace "web_server_image" with actual image name
-    replicas.extend(new_replicas)
-    return jsonify({
-        "message": {
-            "N": len(replicas),
-            "replicas": replicas
-        },
-        "status": "successful"
-    }), 200
+@app.route('/add_servers/<int:n>', methods=['POST'])
+def add_replicas(n):
+    try:
+        # Generate hostnames
+        hostnames = [random_hostname() for _ in range(n)]
+        logging.info(f"Generated hostnames: {hostnames}")
+
+        new_replicas = []
+
+        # Iterate to create the requested number of replicas
+        for hostname in hostnames:
+            logging.info(f"Using hostname: {hostname}")
+
+            try:
+                # Run a new container
+                container = docker_client.containers.run("web_server_image", name=hostname, detach=True)
+                new_replicas.append(container.name)
+                logging.info(f"Started new container: {container.name}")
+            except Exception as e:
+                logging.error(f"Failed to start new container: {str(e)}")
+                return jsonify({"error": f"Failed to start new container: {str(e)}"}), 500
+
+        # Update the global replicas list
+        replicas.extend(new_replicas)
+        logging.info(f"Total replicas: {len(replicas)}")
+
+        return jsonify({
+            "message": {
+                "N": len(replicas),
+                "replicas": replicas
+            },
+            "status": "successful"
+        }), 200
+
+    except Exception as e:
+        logging.error(f"Internal Server Error: {str(e)}")
+        return jsonify({"error": f"Internal Server Error: {str(e)}"}), 500
 
 
 @app.route('/rm', methods=['DELETE'])
