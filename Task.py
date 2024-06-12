@@ -41,7 +41,7 @@ def map_request():
     if request_id is None:
         return jsonify({"error": "Request ID is required"}), 400
     try:
-        server_id = consistent_hash_map.map_request(request_id)
+        server_id = consistent_hash_map.map_request()
         log_to_browser(jsonify({"request_id": request_id, "mapped_server": server_id}))
         return jsonify({"request_id": request_id, "mapped_server": server_id}), 200
     except Exception as e:

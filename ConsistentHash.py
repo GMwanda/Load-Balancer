@@ -9,9 +9,6 @@ class ConsistentHashMap:
 
         self._initialize_virtual_servers()
 
-    def _hash_request(self, i):
-        return (i + 2 ** i + 17) % self.num_slots
-
     def _hash_virtual_server(self, server_id, virtual_id):
         return (server_id + virtual_id + 2 ** virtual_id + 25) % self.num_slots
 
@@ -27,7 +24,7 @@ class ConsistentHashMap:
                 self.hash_map[slot] = (server_id, virtual_id)
                 self.servers[server_id].append(slot)
 
-    def map_request(self, request_id):
+    def map_request(self):
         while self.hash_map[self.current_server_index] is None:
             self.current_server_index = (self.current_server_index + 1) % self.num_slots
 
