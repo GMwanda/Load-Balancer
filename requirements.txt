@@ -2,3 +2,6 @@ Flask==2.0.1
 Werkzeug==2.0.1
 docker
 gunicorn
+flask_socketio
+asyncio
+aiohttp

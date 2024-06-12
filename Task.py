@@ -6,6 +6,7 @@ import random
 import string
 import subprocess
 import docker
+from flask_socketio import SocketIO
 
 app = Flask(__name__)
 
@@ -14,9 +15,11 @@ N = 3   # Number of server containers
 SLOTS = 512  # Total number of slots in the consistent hash map
 K = int(math.log2(SLOTS))  # Number of virtual servers for each server container
 
+# Logs
+logs = []
+
 # Initialize the consistent hash map
 consistent_hash_map = ConsistentHashMap(num_servers=N, num_slots=SLOTS, num_virtual_servers=K)
-
 
 @app.route('/home', methods=['GET'])
 def home():
@@ -25,8 +28,8 @@ def home():
 
 
 @app.route('/heartbeat', methods=['GET'])
-def heartbeat():
-    return 'Hello', 200
+def heartbeat(): 
+    return "Hello 200"
 
 
 @app.route('/map_request', methods=['GET'])
@@ -38,6 +41,7 @@ def map_request():
         return jsonify({"error": "Request ID is required"}), 400
     try:
         server_id = consistent_hash_map.map_request(request_id)
+        log_to_browser(jsonify({"request_id": request_id, "mapped_server": server_id}))
         return jsonify({"request_id": request_id, "mapped_server": server_id}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -48,7 +52,6 @@ replicas = []
 
 def random_hostname(length=5):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
-
 
 @app.route('/rep', methods=['GET'])
 def get_replicas():
@@ -83,7 +86,7 @@ def add_replicas():
             pass  # Container does not exist, no need to remove it
 
             # Run a new container
-        container = docker_client.containers.run("web_server_image", name=hostname,
+        container = docker_client.containers.run("load-balancer_web_server1", name=hostname,
                                                  detach=True)  # replace "web_server_image" with actual image name
         new_replicas.append(container.name)
 
@@ -120,7 +123,7 @@ def remove_replicas():
             replicas.remove(hostname)
             subprocess.run(["docker", "stop", hostname], check=True)
             subprocess.run(["docker", "rm", hostname], check=True)
-
+    log_to_browser("Replica removed")
     return jsonify({
         "message": {
             "N": len(replicas),
@@ -130,17 +133,13 @@ def remove_replicas():
     }), 200
 
 
-@app.route('/<path:path>', methods=['GET'])
-def route_request(path):
-    if not replicas:
-        return jsonify({"error": "No replicas available"}), 503
 
-    chosen_replica = replicas[hash(path) % len(replicas)]
-    return jsonify({
-        "path": path,
-        "replica": chosen_replica
-    })
+@app.route('/logs', methods=['GET'])
+def get_logs():
+    return jsonify(logs)
 
+def log_to_browser(message):
+    logs.append(message)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
