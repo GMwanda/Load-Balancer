@@ -2,7 +2,6 @@ version: '3.8'
 
 services:
   web_server:
-    image: web_server_image
     build: .
     ports:
       - "5000:5000"
@@ -12,3 +11,5 @@ services:
       - SERVER_ID=WebServer
     expose:
       - "5000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
