@@ -5,6 +5,7 @@ class ConsistentHashMap:
         self.num_virtual_servers = num_virtual_servers
         self.hash_map = [None] * num_slots
         self.servers = {i: [] for i in range(num_servers)}  # dictionary to hold server and their virtual servers
+        self.current_server_index = 0  # Keep track of the current server index
 
         self._initialize_virtual_servers()
 
@@ -22,16 +23,11 @@ class ConsistentHashMap:
                 while self.hash_map[slot] is not None:
                     slot = (slot + 1) % self.num_slots
                     if slot == original_slot:
-                        raise Exception("Hash map is full, cannot find emptyslot")
+                        raise Exception("Hash map is full, cannot find empty slot")
                 self.hash_map[slot] = (server_id, virtual_id)
                 self.servers[server_id].append(slot)
 
     def map_request(self, request_id):
-        slot = self._hash_request(request_id)
-        original_slot = slot
-        while self.hash_map[slot] is None:
-            slot = (slot + 1) % self.num_slots
-            if slot == original_slot:
-                raise Exception("No server available to handle the request")
-        server_id, _ = self.hash_map[slot]
+        server_id = self.current_server_index % self.num_servers  # Get the current server index
+        self.current_server_index += 1  # Move to the next server for the next request
         return server_id
