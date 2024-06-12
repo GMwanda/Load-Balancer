@@ -114,7 +114,6 @@ def random_hostname(length=10):
 def add_replicas(n):
     try:
         # Generate hostnames
-        n = 1
         hostnames = [random_hostname() for _ in range(n)]
         logging.info(f"Generated hostnames: {hostnames}")
 
