@@ -5,6 +5,7 @@ import random
 import string
 import subprocess
 import docker
+import logging
 
 app = Flask(__name__)
 
@@ -86,8 +87,8 @@ def map_request():
 replicas = []
 
 
-def random_hostname(length=5):
-    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+# def random_hostname(length=5):
+#     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
 
 @app.route('/rep', methods=['GET'])
@@ -100,47 +101,53 @@ def get_replicas():
 
 docker_client = docker.from_env()
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
-@app.route('/add', methods=['POST'])
+
+def random_hostname(length=10):
+    """Generate a random hostname."""
+    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
+
+
+@app.route('/add_servers', methods=['POST'])
 def add_replicas():
-    data = request.get_json()
-    n = data.get("n")
-    hostnames = data.get("hostnames", [])
+    try:
+        # Generate hostnames
+        n = 1
+        hostnames = [random_hostname() for _ in range(n)]
+        logging.info(f"Generated hostnames: {hostnames}")
 
-    if len(hostnames) > n:
-        return jsonify({"error": "Number of hostnames exceeds number of instances to add"}), 400
+        new_replicas = []
 
-    new_replicas = []
-    for i in range(n):
-        if i < len(hostnames):
-            hostname = hostnames[i]
-        else:
-            hostname = random_hostname()
+        # Iterate to create the requested number of replicas
+        for hostname in hostnames:
+            logging.info(f"Using hostname: {hostname}")
 
-        try:
-            # Remove the container if it already exists
-            existing_container = docker_client.containers.get(hostname)
-            existing_container.stop()
-            existing_container.remove()
-        except docker.errors.NotFound:
-            pass  # Container does not exist, no need to remove it
+            try:
+                # Run a new container
+                container = docker_client.containers.run("web_server_image", name=hostname, detach=True)
+                new_replicas.append(container.name)
+                logging.info(f"Started new container: {container.name}")
+            except Exception as e:
+                logging.error(f"Failed to start new container: {str(e)}")
+                return jsonify({"error": f"Failed to start new container: {str(e)}"}), 500
 
-            # Run a new container
-        container = docker_client.containers.run("web_server_image", name=hostname,
-                                                 detach=True)  # replace "web_server_image" with actual image name
-        new_replicas.append(container.name)
+        # Update the global replicas list
+        replicas.extend(new_replicas)
+        logging.info(f"Total replicas: {len(replicas)}")
 
-        # new_replicas.append(hostname)
-        # subprocess.run(["docker", "run", "-d", "--name", hostname,
-        #                 "web_server_image"])  # replace "web_server_image" with actual image name
-    replicas.extend(new_replicas)
-    return jsonify({
-        "message": {
-            "N": len(replicas),
-            "replicas": replicas
-        },
-        "status": "successful"
-    }), 200
+        return jsonify({
+            "message": {
+                "N": len(replicas),
+                "replicas": replicas
+            },
+            "status": "successful"
+        }), 200
+
+    except Exception as e:
+        logging.error(f"Internal Server Error: {str(e)}")
+        return jsonify({"error": f"Internal Server Error: {str(e)}"}), 500
 
 
 @app.route('/rm', methods=['DELETE'])
@@ -187,3 +194,4 @@ def route_request(path):
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+
