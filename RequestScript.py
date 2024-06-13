@@ -26,7 +26,11 @@ async def experiment_A1(url, num_servers, num_requests):
         responses = await asyncio.gather(*tasks)
         
     for response in responses:
+<<<<<<< HEAD
         logging.info(f"Response: {response}")
+=======
+        logging.info(response)
+>>>>>>> dc1b44e2cb4f5f61d8e9735de3aa9e52f3be7763
         server_index = response['mapped_server']
         if server_index == -1:
             error_count += 1
