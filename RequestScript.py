@@ -3,6 +3,7 @@ import aiohttp
 import random 
 import matplotlib.pyplot as plt
 from urllib.parse import urlencode
+import logging
 
 async def send_request(session, url, num_requests):
     request_id = random.randint(1, num_requests)
@@ -25,6 +26,7 @@ async def experiment_A1(url, num_servers, num_requests):
         responses = await asyncio.gather(*tasks)
         
     for response in responses:
+        logging.info(response)
         server_index = response['mapped_server']
         if server_index == -1:
             error_count += 1
@@ -48,9 +50,9 @@ async def experiment_A2(url, max_servers, num_requests_per_run):
 
 if __name__ == "__main__":
     base_url = "http://localhost:5000/map_request"  # Replace with your load balancer URL
-    num_requests = 10000
+    num_requests = 100
     max_servers = 6
-    num_requests_per_run = 200
+    num_requests_per_run = 1000
     
     # Experiment A-1
     loop = asyncio.get_event_loop()
