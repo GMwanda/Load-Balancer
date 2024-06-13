@@ -1,7 +1,7 @@
 import os
 import math
 from flask import Flask, request, jsonify
-from ConsistentHash import ConsistentHashMap 
+from ConsistentHash import ConsistentHashMap
 import random
 import string
 import subprocess
@@ -22,6 +22,7 @@ logs = []
 # Initialize the consistent hash map
 consistent_hash_map = ConsistentHashMap(num_servers=N, num_slots=SLOTS, num_virtual_servers=K)
 
+
 @app.route('/home', methods=['GET'])
 def home():
     server_id = os.environ.get('SERVER_ID', 'Unknown')
@@ -29,7 +30,7 @@ def home():
 
 
 @app.route('/heartbeat', methods=['GET'])
-def heartbeat(): 
+def heartbeat():
     return "Hello 200"
 
 
@@ -41,7 +42,7 @@ def map_request():
     if request_id is None:
         return jsonify({"error": "Request ID is required"}), 400
     try:
-        server_id = consistent_hash_map.map_request(request_id)
+        server_id = consistent_hash_map.map_request()
         log_to_browser(jsonify({"request_id": request_id, "mapped_server": server_id}))
         return jsonify({"request_id": request_id, "mapped_server": server_id}), 200
     except Exception as e:
@@ -54,6 +55,7 @@ replicas = []
 
 def random_hostname(length=5):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+
 
 @app.route('/rep', methods=['GET'])
 def get_replicas():
@@ -113,27 +115,37 @@ def add_replicas(n):
         return jsonify({"error": f"Internal Server Error: {str(e)}"}), 500
 
 
-@app.route('/rm', methods=['DELETE'])
-def remove_replicas():
+@app.route('/rm/<int:n>', methods=['DELETE'])
+def remove_replicas(n):
     data = request.get_json()
-    n = data.get("n")
     hostnames = data.get("hostnames", [])
+
+    # Validate input
+    if n <= 0 and not hostnames:
+        return jsonify({"error": "Either 'n' or 'hostnames' must be specified"}), 400
 
     if len(hostnames) > n:
         return jsonify({"error": "Number of hostnames exceeds number of instances to remove"}), 400
 
-    to_remove = set()
-    if hostnames:
-        to_remove.update(hostnames)
-    else:
-        to_remove.update(random.sample(replicas, min(n, len(replicas))))
+    to_remove = set(hostnames)
+
+    # If more instances need to be removed, add random instances
+    if n > len(hostnames):
+        remaining_count = n - len(hostnames)
+        additional_replicas = random.sample(replicas, min(remaining_count, len(replicas) - len(hostnames)))
+        to_remove.update(additional_replicas)
 
     for hostname in to_remove:
         if hostname in replicas:
             replicas.remove(hostname)
-            subprocess.run(["docker", "stop", hostname], check=True)
-            subprocess.run(["docker", "rm", hostname], check=True)
-    log_to_browser("Replica removed")
+            try:
+                subprocess.run(["docker", "stop", hostname], check=True)
+                subprocess.run(["docker", "rm", hostname], check=True)
+            except subprocess.CalledProcessError as e:
+                log_to_browser(f"Failed to remove container {hostname}: {str(e)}")
+                return jsonify({"error": f"Failed to remove container {hostname}: {str(e)}"}), 500
+
+    log_to_browser("Replicas removed")
     return jsonify({
         "message": {
             "N": len(replicas),
@@ -148,8 +160,10 @@ def remove_replicas():
 def get_logs():
     return jsonify(logs)
 
+
 def log_to_browser(message):
     logs.append(message)
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
