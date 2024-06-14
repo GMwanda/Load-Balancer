@@ -117,50 +117,39 @@ def add_replicas(n):
 def remove_replicas(n):
     global consistent_hash_map
 
-    data = request.get_json()
-    if data is None:
-        return jsonify({"error": "Request body must be JSON"}), 400
-
-    hostnames = data.get("hostnames", [])
-
-    logging.info(f"Received request to remove {n} replicas with hostnames: {hostnames}")
+    logging.info(f"Received request to remove {n} replicas")
 
     # Validate input
-    if n <= 0 and not hostnames:
-        logging.error("Either 'n' or 'hostnames' must be specified")
-        return jsonify({"error": "Either 'n' or 'hostnames' must be specified"}), 400
+    if n <= 0:
+        logging.error("The number of replicas to remove must be greater than zero")
+        return jsonify({"error": "The number of replicas to remove must be greater than zero"}), 400
 
-    if len(hostnames) > n:
-        logging.error("Number of hostnames exceeds number of instances to remove")
-        return jsonify({"error": "Number of hostnames exceeds number of instances to remove"}), 400
+    if n > len(replicas):
+        logging.error("The number of replicas to remove exceeds the number of available replicas")
+        return jsonify({"error": "The number of replicas to remove exceeds the number of available replicas"}), 400
 
-    to_remove = set(hostnames)
-
-    # If more instances need to be removed, add random instances
-    if n > len(hostnames):
-        remaining_count = n - len(hostnames)
-        additional_replicas = random.sample(replicas, min(remaining_count, len(replicas) - len(hostnames)))
-        to_remove.update(additional_replicas)
+    # Select replicas to remove
+    to_remove = random.sample(replicas, n)
+    logging.info(f"Selected replicas to remove: {to_remove}")
 
     successfully_removed = []
 
     for hostname in to_remove:
-        if hostname in replicas:
-            try:
-                logging.info(f"Stopping container {hostname}")
-                result = subprocess.run(["docker", "stop", hostname], check=True, capture_output=True, text=True)
-                logging.info(f"Stop result: {result.stdout} {result.stderr}")
+        try:
+            logging.info(f"Stopping container {hostname}")
+            result = subprocess.run(["docker", "stop", hostname], check=True, capture_output=True, text=True)
+            logging.info(f"Stop result: {result.stdout} {result.stderr}")
 
-                logging.info(f"Removing container {hostname}")
-                result = subprocess.run(["docker", "rm", hostname], check=True, capture_output=True, text=True)
-                logging.info(f"Remove result: {result.stdout} {result.stderr}")
+            logging.info(f"Removing container {hostname}")
+            result = subprocess.run(["docker", "rm", hostname], check=True, capture_output=True, text=True)
+            logging.info(f"Remove result: {result.stdout} {result.stderr}")
 
-                replicas.remove(hostname)
-                successfully_removed.append(hostname)
-            except subprocess.CalledProcessError as e:
-                error_message = f"Failed to remove container {hostname}: {str(e)}. Output: {e.output}"
-                logging.error(error_message)
-                return jsonify({"error": error_message}), 500
+            replicas.remove(hostname)
+            successfully_removed.append(hostname)
+        except subprocess.CalledProcessError as e:
+            error_message = f"Failed to remove container {hostname}: {str(e)}. Output: {e.output}"
+            logging.error(error_message)
+            return jsonify({"error": error_message}), 500
 
     if not successfully_removed:
         return jsonify({"error": "No replicas were removed"}), 400
