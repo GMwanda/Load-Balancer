@@ -6,21 +6,33 @@ import random
 import string
 import subprocess
 import docker
-from flask_socketio import SocketIO
 import logging
 
 app = Flask(__name__)
 
-# Constants for consistent hash map
-N = 3  # Number of server containers
+N = 3
 SLOTS = 512  # Total number of slots in the consistent hash map
 K = int(math.log2(SLOTS))  # Number of virtual servers for each server container
 
 # Logs
 logs = []
 
+# Initialize Docker client
+docker_client = docker.from_env()
+
 # Initialize the consistent hash map
 consistent_hash_map = ConsistentHashMap(num_servers=N, num_slots=SLOTS, num_virtual_servers=K)
+
+# Assuming a simple in-memory structure to keep track of replicas
+replicas = []
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+
+
+def random_hostname(length=10):
+    """Generate a random hostname."""
+    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
 
 
 @app.route('/home', methods=['GET'])
@@ -43,18 +55,10 @@ def map_request():
         return jsonify({"error": "Request ID is required"}), 400
     try:
         server_id = consistent_hash_map.map_request()
-        log_to_browser(jsonify({"request_id": request_id, "mapped_server": server_id}))
+        log_to_browser(f"Request {request_id} mapped to server {server_id}")
         return jsonify({"request_id": request_id, "mapped_server": server_id}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
-# Assuming a simple in-memory structure to keep track of replica
-replicas = []
-
-
-def random_hostname(length=5):
-    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
 
 @app.route('/rep', methods=['GET'])
@@ -65,19 +69,9 @@ def get_replicas():
     })
 
 
-docker_client = docker.from_env()
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-
-
-def random_hostname(length=10):
-    """Generate a random hostname."""
-    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
-
-
 @app.route('/add_servers/<int:n>', methods=['POST'])
 def add_replicas(n):
+    global consistent_hash_map
     try:
         # Generate hostnames
         hostnames = [random_hostname() for _ in range(n)]
@@ -102,6 +96,10 @@ def add_replicas(n):
         replicas.extend(new_replicas)
         logging.info(f"Total replicas: {len(replicas)}")
 
+        # Reinitialize ConsistentHashMap with the updated number of servers
+        num_servers = len(replicas)
+        consistent_hash_map = ConsistentHashMap(num_servers=num_servers, num_slots=SLOTS, num_virtual_servers=K)
+
         return jsonify({
             "message": {
                 "N": len(replicas),
@@ -117,43 +115,55 @@ def add_replicas(n):
 
 @app.route('/rm/<int:n>', methods=['DELETE'])
 def remove_replicas(n):
-    data = request.get_json()
-    hostnames = data.get("hostnames", [])
+    global replicas
+
+    logging.info(f"Received request to remove {n} replicas")
 
     # Validate input
-    if n <= 0 and not hostnames:
-        return jsonify({"error": "Either 'n' or 'hostnames' must be specified"}), 400
+    if n <= 0:
+        logging.error("The number of replicas to remove must be greater than zero")
+        return jsonify({"error": "The number of replicas to remove must be greater than zero"}), 400
 
-    if len(hostnames) > n:
-        return jsonify({"error": "Number of hostnames exceeds number of instances to remove"}), 400
+    if n > len(replicas):
+        logging.error("The number of replicas to remove exceeds the number of available replicas")
+        return jsonify({"error": "The number of replicas to remove exceeds the number of available replicas"}), 400
 
-    to_remove = set(hostnames)
+    # Select replicas to remove
+    to_remove = random.sample(replicas, n)
+    logging.info(f"Selected replicas to remove: {to_remove}")
 
-    # If more instances need to be removed, add random instances
-    if n > len(hostnames):
-        remaining_count = n - len(hostnames)
-        additional_replicas = random.sample(replicas, min(remaining_count, len(replicas) - len(hostnames)))
-        to_remove.update(additional_replicas)
+    successfully_removed = []
 
     for hostname in to_remove:
-        if hostname in replicas:
-            replicas.remove(hostname)
-            try:
-                subprocess.run(["docker", "stop", hostname], check=True)
-                subprocess.run(["docker", "rm", hostname], check=True)
-            except subprocess.CalledProcessError as e:
-                log_to_browser(f"Failed to remove container {hostname}: {str(e)}")
-                return jsonify({"error": f"Failed to remove container {hostname}: {str(e)}"}), 500
+        try:
+            logging.info(f"Stopping container {hostname}")
+            stop_result = subprocess.run(["docker", "stop", hostname], check=True, capture_output=True, text=True)
+            logging.info(f"Stop result: {stop_result.stdout.strip()} {stop_result.stderr.strip()}")
 
-    log_to_browser("Replicas removed")
+            logging.info(f"Removing container {hostname}")
+            remove_result = subprocess.run(["docker", "rm", hostname], check=True, capture_output=True, text=True)
+            logging.info(f"Remove result: {remove_result.stdout.strip()} {remove_result.stderr.strip()}")
+
+            replicas.remove(hostname)
+            successfully_removed.append(hostname)
+        except subprocess.CalledProcessError as e:
+            error_message = f"Failed to remove container {hostname}: {str(e)}. Output: {e.output.strip()}"
+            logging.error(error_message)
+            return jsonify({"error": error_message}), 500
+
+    if not successfully_removed:
+        return jsonify({"error": "No replicas were removed"}), 400
+
+    logging.info("Replicas removed successfully")
+
     return jsonify({
         "message": {
             "N": len(replicas),
-            "replicas": replicas
+            "replicas": replicas,
+            "removed": successfully_removed
         },
         "status": "successful"
     }), 200
-
 
 
 @app.route('/logs', methods=['GET'])
