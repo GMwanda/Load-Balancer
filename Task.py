@@ -116,14 +116,22 @@ def add_replicas(n):
 @app.route('/rm/<int:n>', methods=['DELETE'])
 def remove_replicas(n):
     global consistent_hash_map
+
     data = request.get_json()
+    if data is None:
+        return jsonify({"error": "Request body must be JSON"}), 400
+
     hostnames = data.get("hostnames", [])
+
+    logging.info(f"Received request to remove {n} replicas with hostnames: {hostnames}")
 
     # Validate input
     if n <= 0 and not hostnames:
+        logging.error("Either 'n' or 'hostnames' must be specified")
         return jsonify({"error": "Either 'n' or 'hostnames' must be specified"}), 400
 
     if len(hostnames) > n:
+        logging.error("Number of hostnames exceeds number of instances to remove")
         return jsonify({"error": "Number of hostnames exceeds number of instances to remove"}), 400
 
     to_remove = set(hostnames)
@@ -138,10 +146,11 @@ def remove_replicas(n):
 
     for hostname in to_remove:
         if hostname in replicas:
-            replicas.remove(hostname)
             try:
+                logging.info(f"Stopping and removing container {hostname}")
                 subprocess.run(["docker", "stop", hostname], check=True)
                 subprocess.run(["docker", "rm", hostname], check=True)
+                replicas.remove(hostname)
                 successfully_removed.append(hostname)
             except subprocess.CalledProcessError as e:
                 log_to_browser(f"Failed to remove container {hostname}: {str(e)}")
