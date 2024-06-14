@@ -115,7 +115,7 @@ def add_replicas(n):
 
 @app.route('/rm/<int:n>', methods=['DELETE'])
 def remove_replicas(n):
-    global consistent_hash_map
+    global replicas
 
     logging.info(f"Received request to remove {n} replicas")
 
@@ -137,28 +137,25 @@ def remove_replicas(n):
     for hostname in to_remove:
         try:
             logging.info(f"Stopping container {hostname}")
-            result = subprocess.run(["docker", "stop", hostname], check=True, capture_output=True, text=True)
-            logging.info(f"Stop result: {result.stdout} {result.stderr}")
+            stop_result = subprocess.run(["docker", "stop", hostname], check=True, capture_output=True, text=True)
+            logging.info(f"Stop result: {stop_result.stdout.strip()} {stop_result.stderr.strip()}")
 
             logging.info(f"Removing container {hostname}")
-            result = subprocess.run(["docker", "rm", hostname], check=True, capture_output=True, text=True)
-            logging.info(f"Remove result: {result.stdout} {result.stderr}")
+            remove_result = subprocess.run(["docker", "rm", hostname], check=True, capture_output=True, text=True)
+            logging.info(f"Remove result: {remove_result.stdout.strip()} {remove_result.stderr.strip()}")
 
             replicas.remove(hostname)
             successfully_removed.append(hostname)
         except subprocess.CalledProcessError as e:
-            error_message = f"Failed to remove container {hostname}: {str(e)}. Output: {e.output}"
+            error_message = f"Failed to remove container {hostname}: {str(e)}. Output: {e.output.strip()}"
             logging.error(error_message)
             return jsonify({"error": error_message}), 500
 
     if not successfully_removed:
         return jsonify({"error": "No replicas were removed"}), 400
 
-    # Reinitialize ConsistentHashMap with the updated number of servers
-    num_servers = len(replicas)
-    consistent_hash_map = ConsistentHashMap(num_servers=num_servers, num_slots=SLOTS, num_virtual_servers=K)
+    logging.info("Replicas removed successfully")
 
-    log_to_browser("Replicas removed")
     return jsonify({
         "message": {
             "N": len(replicas),
