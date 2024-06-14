@@ -11,6 +11,7 @@ import logging
 
 app = Flask(__name__)
 
+N = 0
 SLOTS = 512  # Total number of slots in the consistent hash map
 K = int(math.log2(SLOTS))  # Number of virtual servers for each server container
 
