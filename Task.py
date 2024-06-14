@@ -6,7 +6,6 @@ import random
 import string
 import subprocess
 import docker
-from flask_socketio import SocketIO
 import logging
 
 app = Flask(__name__)
@@ -18,8 +17,22 @@ K = int(math.log2(SLOTS))  # Number of virtual servers for each server container
 # Logs
 logs = []
 
+# Initialize Docker client
+docker_client = docker.from_env()
+
 # Initialize the consistent hash map
 consistent_hash_map = ConsistentHashMap(num_servers=N, num_slots=SLOTS, num_virtual_servers=K)
+
+# Assuming a simple in-memory structure to keep track of replicas
+replicas = []
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+
+
+def random_hostname(length=10):
+    """Generate a random hostname."""
+    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
 
 
 @app.route('/home', methods=['GET'])
@@ -42,18 +55,10 @@ def map_request():
         return jsonify({"error": "Request ID is required"}), 400
     try:
         server_id = consistent_hash_map.map_request()
-        log_to_browser(jsonify({"request_id": request_id, "mapped_server": server_id}))
+        log_to_browser(f"Request {request_id} mapped to server {server_id}")
         return jsonify({"request_id": request_id, "mapped_server": server_id}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
-# Assuming a simple in-memory structure to keep track of replica
-replicas = []
-
-
-def random_hostname(length=5):
-    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
 
 @app.route('/rep', methods=['GET'])
@@ -64,19 +69,9 @@ def get_replicas():
     })
 
 
-docker_client = docker.from_env()
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-
-
-def random_hostname(length=10):
-    """Generate a random hostname."""
-    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
-
-
 @app.route('/add_servers/<int:n>', methods=['POST'])
 def add_replicas(n):
+    global consistent_hash_map
     try:
         # Generate hostnames
         hostnames = [random_hostname() for _ in range(n)]
@@ -101,7 +96,9 @@ def add_replicas(n):
         replicas.extend(new_replicas)
         logging.info(f"Total replicas: {len(replicas)}")
 
-        N = len(replicas)
+        # Reinitialize ConsistentHashMap with the updated number of servers
+        num_servers = len(replicas)
+        consistent_hash_map = ConsistentHashMap(num_servers=num_servers, num_slots=SLOTS, num_virtual_servers=K)
 
         return jsonify({
             "message": {
@@ -118,6 +115,7 @@ def add_replicas(n):
 
 @app.route('/rm/<int:n>', methods=['DELETE'])
 def remove_replicas(n):
+    global consistent_hash_map
     data = request.get_json()
     hostnames = data.get("hostnames", [])
 
@@ -146,6 +144,10 @@ def remove_replicas(n):
                 log_to_browser(f"Failed to remove container {hostname}: {str(e)}")
                 return jsonify({"error": f"Failed to remove container {hostname}: {str(e)}"}), 500
 
+    # Reinitialize ConsistentHashMap with the updated number of servers
+    num_servers = len(replicas)
+    consistent_hash_map = ConsistentHashMap(num_servers=num_servers, num_slots=SLOTS, num_virtual_servers=K)
+
     log_to_browser("Replicas removed")
     return jsonify({
         "message": {
@@ -154,7 +156,6 @@ def remove_replicas(n):
         },
         "status": "successful"
     }), 200
-
 
 
 @app.route('/logs', methods=['GET'])
