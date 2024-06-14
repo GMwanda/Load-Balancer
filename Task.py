@@ -84,7 +84,13 @@ def add_replicas(n):
 
             try:
                 # Run a new container
-                container = docker_client.containers.run("web_server_image", name=hostname, detach=True)
+                container = docker_client.containers.run(
+                    "web_server_image",
+                    name=hostname,
+                    detach=True,
+                    restart_policy={"Name": "always"},
+                    command=["gunicorn", "-b", "0.0.0.0:5000", "Task:app"]
+                )
                 new_replicas.append(container.name)
                 logging.info(f"Started new container: {container.name}")
             except Exception as e:
