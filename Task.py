@@ -134,15 +134,21 @@ def remove_replicas(n):
         additional_replicas = random.sample(replicas, min(remaining_count, len(replicas) - len(hostnames)))
         to_remove.update(additional_replicas)
 
+    successfully_removed = []
+
     for hostname in to_remove:
         if hostname in replicas:
             replicas.remove(hostname)
             try:
                 subprocess.run(["docker", "stop", hostname], check=True)
                 subprocess.run(["docker", "rm", hostname], check=True)
+                successfully_removed.append(hostname)
             except subprocess.CalledProcessError as e:
                 log_to_browser(f"Failed to remove container {hostname}: {str(e)}")
                 return jsonify({"error": f"Failed to remove container {hostname}: {str(e)}"}), 500
+
+    if not successfully_removed:
+        return jsonify({"error": "No replicas were removed"}), 400
 
     # Reinitialize ConsistentHashMap with the updated number of servers
     num_servers = len(replicas)
@@ -152,10 +158,12 @@ def remove_replicas(n):
     return jsonify({
         "message": {
             "N": len(replicas),
-            "replicas": replicas
+            "replicas": replicas,
+            "removed": successfully_removed
         },
         "status": "successful"
     }), 200
+
 
 
 @app.route('/logs', methods=['GET'])
