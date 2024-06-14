@@ -92,7 +92,7 @@ def add_replicas(n):
                     name=hostname,
                     detach=True,
                     restart_policy={"Name": "always"},
-                    command="python3 Task.py",
+                    command={"gunicorn","-b","0.0.0.0:5000", "Task:app"}
                 )
                 new_replicas.append(container.name)
                 logging.info(f"Started new container: {container.name}")
