@@ -108,10 +108,13 @@ def add_replicas(n):
         num_servers = len(replicas)
         consistent_hash_map = ConsistentHashMap(num_servers=num_servers, num_slots=SLOTS, num_virtual_servers=K)
 
+        # Convert replicas list to JSON serializable format (convert sets to lists)
+        replicas_json = list(replicas)
+
         return jsonify({
             "message": {
-                "N": len(replicas),
-                "replicas": replicas
+                "N": len(replicas_json),
+                "replicas": replicas_json
             },
             "status": "successful"
         }), 200
