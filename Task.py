@@ -147,14 +147,20 @@ def remove_replicas(n):
     for hostname in to_remove:
         if hostname in replicas:
             try:
-                logging.info(f"Stopping and removing container {hostname}")
-                subprocess.run(["docker", "stop", hostname], check=True)
-                subprocess.run(["docker", "rm", hostname], check=True)
+                logging.info(f"Stopping container {hostname}")
+                result = subprocess.run(["docker", "stop", hostname], check=True, capture_output=True, text=True)
+                logging.info(f"Stop result: {result.stdout} {result.stderr}")
+
+                logging.info(f"Removing container {hostname}")
+                result = subprocess.run(["docker", "rm", hostname], check=True, capture_output=True, text=True)
+                logging.info(f"Remove result: {result.stdout} {result.stderr}")
+
                 replicas.remove(hostname)
                 successfully_removed.append(hostname)
             except subprocess.CalledProcessError as e:
-                log_to_browser(f"Failed to remove container {hostname}: {str(e)}")
-                return jsonify({"error": f"Failed to remove container {hostname}: {str(e)}"}), 500
+                error_message = f"Failed to remove container {hostname}: {str(e)}. Output: {e.output}"
+                logging.error(error_message)
+                return jsonify({"error": error_message}), 500
 
     if not successfully_removed:
         return jsonify({"error": "No replicas were removed"}), 400
@@ -172,7 +178,6 @@ def remove_replicas(n):
         },
         "status": "successful"
     }), 200
-
 
 
 @app.route('/logs', methods=['GET'])
