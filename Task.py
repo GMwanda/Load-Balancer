@@ -11,8 +11,6 @@ import logging
 
 app = Flask(__name__)
 
-# Constants for consistent hash map
-N = 3  # Number of server containers
 SLOTS = 512  # Total number of slots in the consistent hash map
 K = int(math.log2(SLOTS))  # Number of virtual servers for each server container
 
@@ -101,6 +99,8 @@ def add_replicas(n):
         # Update the global replicas list
         replicas.extend(new_replicas)
         logging.info(f"Total replicas: {len(replicas)}")
+
+        N = len(replicas)
 
         return jsonify({
             "message": {
