@@ -25,9 +25,10 @@ class ConsistentHashMap:
                 self.servers[server_id].append(slot)
 
     def map_request(self):
-        while self.hash_map[self.current_server_index] is None:
-            self.current_server_index = (self.current_server_index + 1) % self.num_slots
+        # Map the request to the current server ID
+        server_id = self.current_server_index
 
-        server_id, _ = self.hash_map[self.current_server_index]
-        self.current_server_index = (self.current_server_index + 1) % self.num_slots
+        # Update the current server index in a circular fashion
+        self.current_server_index = (self.current_server_index + 1) % self.num_servers
+
         return server_id
