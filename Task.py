@@ -69,12 +69,8 @@ def get_replicas():
     })
 
 
-from docker.types import RestartPolicy
-
-
 @app.route('/add_servers/<int:n>', methods=['POST'])
 def add_replicas(n):
-    global consistent_hash_map
     try:
         # Generate hostnames
         hostnames = [random_hostname() for _ in range(n)]
@@ -87,13 +83,8 @@ def add_replicas(n):
             logging.info(f"Using hostname: {hostname}")
 
             try:
-                container = docker_client.containers.run(
-                    "web_server_image",
-                    name=hostname,
-                    detach=True,
-                    restart_policy={"Name": "always"},
-                    command={"gunicorn","-b","0.0.0.0:5000", "Task:app"}
-                )
+                # Run a new container
+                container = docker_client.containers.run("web_server_image", name=hostname, detach=True)
                 new_replicas.append(container.name)
                 logging.info(f"Started new container: {container.name}")
             except Exception as e:
