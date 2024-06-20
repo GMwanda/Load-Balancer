@@ -89,11 +89,14 @@ def add_replicas(n):
                     name=hostname,
                     detach=True,
                     restart_policy={"Name": "always"},
-                    command=["gunicorn", "-b", "0.0.0.0:5000", "Task:app"]
+                    command=["gunicorn", "-b", "0.0.0.0:5000", "Task:app"],
+                    volumes={'/var/run/docker.sock': {'bind': '/var/run/docker.sock', 'mode': 'rw'}}
                 )
+
                 new_replicas.append(container.name)
                 logging.info(f"Started new container: {container.name}")
             except Exception as e:
+                # Log and return an error if container creation fails
                 logging.error(f"Failed to start new container: {str(e)}")
                 return jsonify({"error": f"Failed to start new container: {str(e)}"}), 500
 
@@ -102,10 +105,15 @@ def add_replicas(n):
         logging.info(f"Total replicas: {len(replicas)}")
 
         # Reinitialize ConsistentHashMap with the updated number of servers
-        num_servers = len(replicas)
-        consistent_hash_map = ConsistentHashMap(num_servers=num_servers, num_slots=SLOTS, num_virtual_servers=K)
+        try:
+            num_servers = len(replicas)
+            consistent_hash_map = ConsistentHashMap(num_servers=num_servers, num_slots=SLOTS, num_virtual_servers=K)
+        except Exception as e:
+            # Log and return an error if ConsistentHashMap initialization fails
+            logging.error(f"Failed to initialize ConsistentHashMap: {str(e)}")
+            return jsonify({"error": f"Failed to initialize ConsistentHashMap: {str(e)}"}), 500
 
-        # Convert replicas list to JSON serializable format (convert sets to lists)
+        # Convert replicas list to JSON serializable format
         replicas_json = list(replicas)
 
         return jsonify({
@@ -117,6 +125,7 @@ def add_replicas(n):
         }), 200
 
     except Exception as e:
+        # General exception handler for any other errors
         logging.error(f"Internal Server Error: {str(e)}")
         return jsonify({"error": f"Internal Server Error: {str(e)}"}), 500
 
