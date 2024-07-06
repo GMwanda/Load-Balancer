@@ -1,249 +1,182 @@
-# Flask Load Balancer with Consistent Hashing
+# Customizable Load Balancer
 
-This project implements a simple load balancer using Flask and Consistent Hashing. It supports dynamically adding and removing replicas (server containers) and provides endpoints to map requests to replicas based on consistent hashing.
+## Overview
 
-## Features
+This project implements a customizable load balancer that routes requests from multiple clients to several server replicas, ensuring an even distribution of load. The load balancer employs consistent hashing to distribute client requests efficiently among server instances. The project is containerized using Docker and includes various endpoints to manage server replicas and monitor their status.
 
-- Consistent Hashing for request mapping
-- Dynamic addition and removal of server replicas
-- Docker integration for container management
-- Simple API endpoints for interaction
+## Table of Contents
+- [System Architecture](#system-architecture)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Endpoints](#endpoints)
+- [Consistent Hashing](#consistent-hashing)
+- [Analysis](#analysis)
+- [References](#references)
 
-## Requirements
+## System Architecture
 
-- Git
-- Make
-- Docker
-- Docker Compose
-- Python 3.9+
-- Flask
+The system consists of a load balancer and multiple server replicas, all running within a Docker network. The load balancer exposes endpoints to interact with the server replicas, handle client requests, and manage server failures.
 
-## Prerequisites
-
-Before you begin, ensure you have the following installed on your system:
-
-- Git
-- Make
-- Docker
-- Docker Compose
+<!-- Add the correct path to the system diagram -->
 
 ## Installation
 
-Follow these steps to get the project up and running:
+### Prerequisites
+- **OS:** Ubuntu 20.04 LTS or above
+- **Docker:** Version 20.10.23 or above
+- **Programming Languages:** Python (preferred), C++, Java, or any other language of your choice
 
-### 1. Clone the Repository
+### Steps
 
-Open your terminal and clone the repository:
+1. Clone the repository:
+    ```sh
+    git clone https://github.com/GMwanda/Load-Balancer.git
+    cd Load-Balancer
+    ```
 
+2. Build the Docker images:
+    ```sh
+    docker-compose build
+    ```
+
+3. Deploy the application:
+    ```sh
+    docker-compose up
+    ```
+
+## Usage
+
+### Starting the Load Balancer
+
+To start the load balancer and the server replicas, run:
 ```sh
-git clone https://github.com/GMwanda/Load-Balancer.git
-cd Load-Balancer
+make start
 ```
 
-### 2. Install Make
+### Stopping the Load Balancer
 
-If `make` is not installed, install it using the following command:
-
-For Ubuntu/Debian:
+To stop the load balancer and the server replicas, run:
 ```sh
-sudo apt update
-sudo apt install make
+make stop
 ```
 
-For MacOS:
+### Cleaning Up
+
+To remove all containers and networks, run:
 ```sh
-brew install make
+make clean
 ```
 
-### 3. Install Docker
+## Endpoints
 
-Follow the instructions on the [Docker website](https://docs.docker.com/get-docker/) to install Docker for your operating system.
+### Load Balancer Endpoints
 
-For Ubuntu/Debian:
-```sh
-sudo apt update
-sudo apt install docker.io
-```
+- **`/rep` (GET):** Returns the status of the replicas managed by the load balancer.
+    ```json
+    Response:
+    {
+        "message": {
+            "N": 3,
+            "replicas": ["Server 1", "Server 2", "Server 3"]
+        },
+        "status": "successful"
+    }
+    ```
 
-### 4. Install Docker Compose
+- **`/add` (POST):** Adds new server instances.
+    ```json
+    Request:
+    {
+        "n": 4,
+        "hostnames": ["S5", "S4", "S10", "S11"]
+    }
 
-Follow the instructions on the [Docker Compose website](https://docs.docker.com/compose/install/) to install Docker Compose.
+    Response:
+    {
+        "message": {
+            "N": 7,
+            "replicas": ["Server 1", "Server 2", "Server 3", "S5", "S4", "S10", "S11"]
+        },
+        "status": "successful"
+    }
+    ```
 
-For Ubuntu/Debian:
-```sh
-sudo apt install docker-compose
-```
+- **`/rm` (DELETE):** Removes server instances.
+    ```json
+    Request:
+    {
+        "n": 2,
+        "hostnames": ["S5", "S4"]
+    }
 
-## Setup
+    Response:
+    {
+        "message": {
+            "N": 4,
+            "replicas": ["Server 1", "Server 3", "S10", "S11"]
+        },
+        "status": "successful"
+    }
+    ```
 
-1. **Build the Docker Image**
+- **`/<path>` (GET):** Routes the request to a server replica. Example: `/home`
+    ```json
+    Response:
+    {
+        "message": "Hello from Server: 3",
+        "status": "successful"
+    }
+    ```
 
-Run the following command to build the Docker image:
+### Server Endpoints
 
-```sh
-make build
-```
+- **`/home` (GET):** Returns a string with the unique identifier of the server instance.
+    ```json
+    Response:
+    {
+        "message": "Hello from Server: [ID]",
+        "status": "successful"
+    }
+    ```
 
-2. **Run the Project**
+- **`/heartbeat` (GET):** Sends heartbeat responses to monitor server status.
+    ```json
+    Response: [EMPTY]
+    ```
 
-Start the Docker containers using the following command:
+## Consistent Hashing
 
-```sh
-make up
-```
+The load balancer uses consistent hashing to evenly distribute client requests among server instances. The following parameters and hash functions are used:
 
-### Handling Errors
+- **Number of Server Containers (N):** 3
+- **Total Number of Slots (#slots):** 512
+- **Number of Virtual Servers per Server Container (K):** 9
+- **Hash Function for Request Mapping (H(i)):** i + 2*i^2 + 17
+- **Hash Function for Virtual Server Mapping (Φ(i, j)):** i + j + 2*j^2 + 25
 
-If you encounter errors, such as orphan containers, you can resolve them by running:
+### Implementation Details
 
-```sh
-docker-compose down --remove-orphans
-```
+- **Consistent Hash Map:** Maps client requests to server instances in a circular data structure to avoid data shifts during server addition or removal.
+- **Server Addition:** Adds a new server instance and redistributes requests.
+- **Server Failure:** Detects server failure using the `/heartbeat` endpoint and redistributes requests to maintain balanced load.
+- **Virtual Servers:** Uses multiple virtual replicas for each server instance to ensure even load distribution.
 
-Then, rebuild and restart the containers using:
+## Analysis
 
-```sh
-sudo make rebuild
-```
+### Performance Experiments
 
-## Accessing the Application
+- **Load Distribution:** Launch 10,000 async requests on 3 server containers and visualize the request count handled by each server in a bar chart.
 
-Once the containers are running, you can access the Flask application at `http://localhost:5000`.
+- **Scalability:** Increment the number of server containers from 2 to 6 and launch 10,000 requests at each increment. Plot the average load in a line chart.
 
-## Stopping the Project
+- **Failure Recovery:** Test all endpoints and demonstrate the load balancer's quick recovery from server failures.
 
-To stop the running containers, use:
+- **Hash Function Modification:** Modify the hash functions and report observations on load distribution and scalability.
 
-```sh
-make down
-```
+## References
 
-## Additional Makefile Commands
-
-- **View Logs**:
-  ```sh
-  make logs
-  ```
-
-- **Run Containers in Detached Mode**:
-  ```sh
-  make up-detached
-  ```
-
-- **Stop Containers**:
-  ```sh
-  make stop
-  ```
-
-- **Remove Containers**:
-  ```sh
-  make rm
-  ```
-
-## Verify the Setup
-
-Open your browser or a tool like Postman and access the following URL:
-
-```sh
-http://<host-ip>:5000/heartbeat
-```
-
-You should receive a `Hello` response.
-
-## API Endpoints
-
-### 1. Home
-- **URL:** `/home`
-- **Method:** `GET`
-- **Response:**
-  ```json
-  {
-    "message": "Hello from Server: <server_id>",
-    "status": "successful"
-  }
-  ```
-
-### 2. Heartbeat
-- **URL:** `/heartbeat`
-- **Method:** `GET`
-- **Response:** `Hello`
-
-### 3. Map Request
-- **URL:** `/map_request`
-- **Method:** `GET`
-- **Params:** `id` (integer, required)
-- **Response:**
-  ```json
-  {
-    "request_id": <request_id>,
-    "mapped_server": <server_id>
-  }
-  ```
-
-### 4. Get Replicas
-- **URL:** `/rep`
-- **Method:** `GET`
-- **Response:**
-  ```json
-  {
-    "N": <number_of_replicas>,
-    "replicas": ["<replica1>", "<replica2>", ...]
-  }
-  ```
-
-### 5. Add Replicas
-- **URL:** `/add`
-- **Method:** `POST`
-- **Body:**
-  ```json
-  {
-    "n": <number_of_replicas_to_add>,
-    "hostnames": ["<hostname1>", "<hostname2>", ...]  // Optional
-  }
-  ```
-- **Response:**
-  ```json
-  {
-    "message": {
-      "N": <total_number_of replicas>,
-      "replicas": ["<replica1>", "<replica2>", ...]
-    },
-    "status": "successful"
-  }
-  ```
-
-### 6. Remove Replicas
-- **URL:** `/rm`
-- **Method:** `DELETE`
-- **Body:**
-  ```json
-  {
-    "n": <number_of_replicas_to_remove>,
-    "hostnames": ["<hostname1>", "<hostname2>", ...]  // Optional
-  }
-  ```
-- **Response:**
-  ```json
-  {
-    "message": {
-      "N": <total_number_of_replicas>,
-      "replicas": ["<remaining_replica1>", "<remaining_replica2>", ...]
-    },
-    "status": "successful"
-  }
-  ```
-
-## Accessing the Endpoints from Another Device
-
-Use the host machine's IP address to access the endpoints. For example:
-   ```sh
-   http://<host-ip>:5000/add
-   ```
-
-## Contributing
-
-Contributions are welcome! Please fork the repository and submit a pull request for any improvements.
-
-## License
-
-This project is licensed under the MIT License. See the LICENSE file for more details.
+- [Docker Documentation](https://docs.docker.com/)
+- [Docker Compose Documentation](https://docs.docker.com/compose/)
+- [Makefile Tutorial](https://makefiletutorial.com/)
+- [Stanford Consistent Hashing Lecture](https://www.youtube.com/watch?v=Qjb7_1yhF2A)
+- [Dynamic Load Balancing Algorithm](https://en.wikipedia.org/wiki/Load_balancing_(computing))
