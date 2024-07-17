@@ -45,19 +45,34 @@ def home():
 def heartbeat():
     return "Hello 200"
 
+    # @app.route('/map_request/<int:request_id>', methods=['GET'])
+    # def map_request(request_id):
+    #     # request_id = request.args.get('id', type=int)
+    #     # print(request_id)
+    #
+    #     if request_id is None:
+    #         return jsonify({"error": "Request ID is required"}), 400
+    #     try:
+    #         server_id = consistent_hash_map.map_request()
+    #         log_to_browser(f"Request {request_id} mapped to server {server_id}")
+    #         return jsonify({"request_id": request_id, "mapped_server": server_id}), 200
+    #     except Exception as e:
+    #         return jsonify({"error": str(e)}), 500
 
-@app.route('/map_request', methods=['GET'])
-def map_request():
-    request_id = request.args.get('id', type=int)
-    print(request_id)
 
-    if request_id is None:
-        return jsonify({"error": "Request ID is required"}), 400
+@app.route('/map_request/<int:request_id>', methods=['GET'])
+def map_request(request_id):
     try:
-        server_id = consistent_hash_map.map_request()
+        # Map the request ID to a server using consistent hashing
+        server_id = consistent_hash_map.map_request(request_id)
+
+        # Log the mapping (assuming log_to_browser is defined elsewhere)
         log_to_browser(f"Request {request_id} mapped to server {server_id}")
+
+        # Return the mapped server information
         return jsonify({"request_id": request_id, "mapped_server": server_id}), 200
     except Exception as e:
+        # Return an error message if an exception occurs
         return jsonify({"error": str(e)}), 500
 
 
@@ -89,11 +104,14 @@ def add_replicas(n):
                     name=hostname,
                     detach=True,
                     restart_policy={"Name": "always"},
-                    command=["gunicorn", "-b", "0.0.0.0:5000", "Task:app"]
+                    command=["gunicorn", "-b", "0.0.0.0:5000", "Task:app"],
+                    volumes={'/var/run/docker.sock': {'bind': '/var/run/docker.sock', 'mode': 'rw'}}
                 )
+
                 new_replicas.append(container.name)
                 logging.info(f"Started new container: {container.name}")
             except Exception as e:
+                # Log and return an error if container creation fails
                 logging.error(f"Failed to start new container: {str(e)}")
                 return jsonify({"error": f"Failed to start new container: {str(e)}"}), 500
 
@@ -102,10 +120,15 @@ def add_replicas(n):
         logging.info(f"Total replicas: {len(replicas)}")
 
         # Reinitialize ConsistentHashMap with the updated number of servers
-        num_servers = len(replicas)
-        consistent_hash_map = ConsistentHashMap(num_servers=num_servers, num_slots=SLOTS, num_virtual_servers=K)
+        try:
+            num_servers = len(replicas)
+            consistent_hash_map = ConsistentHashMap(num_servers=num_servers, num_slots=SLOTS, num_virtual_servers=K)
+        except Exception as e:
+            # Log and return an error if ConsistentHashMap initialization fails
+            logging.error(f"Failed to initialize ConsistentHashMap: {str(e)}")
+            return jsonify({"error": f"Failed to initialize ConsistentHashMap: {str(e)}"}), 500
 
-        # Convert replicas list to JSON serializable format (convert sets to lists)
+        # Convert replicas list to JSON serializable format
         replicas_json = list(replicas)
 
         return jsonify({
@@ -117,6 +140,7 @@ def add_replicas(n):
         }), 200
 
     except Exception as e:
+        # General exception handler for any other errors
         logging.error(f"Internal Server Error: {str(e)}")
         return jsonify({"error": f"Internal Server Error: {str(e)}"}), 500
 
