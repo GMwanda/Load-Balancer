@@ -66,6 +66,12 @@ To remove all containers and networks, run:
 ```sh
 make clean
 ```
+### Screenshots of System Running on Ubuntu Terminal
+The screenshots below were taken as per the steps above
+![image](https://github.com/user-attachments/assets/7ea9b8ec-1fab-4b32-863e-bf1a7f256103)
+![image](https://github.com/user-attachments/assets/db1102e8-b423-4254-8a0b-1e076c3c1fe1)
+![image](https://github.com/user-attachments/assets/ec5a1413-09dd-4f21-a176-83cb82373c1b)
+
 
 ## Endpoints
 
