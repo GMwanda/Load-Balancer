@@ -67,7 +67,7 @@ To remove all containers and networks, run:
 make clean
 ```
 ### Screenshots of System Running on Ubuntu Terminal
-The screenshots below were taken as per the steps above
+The screenshots below were taken as per the steps and usage above
 ![image](https://github.com/user-attachments/assets/7ea9b8ec-1fab-4b32-863e-bf1a7f256103)
 ![image](https://github.com/user-attachments/assets/db1102e8-b423-4254-8a0b-1e076c3c1fe1)
 ![image](https://github.com/user-attachments/assets/ec5a1413-09dd-4f21-a176-83cb82373c1b)
@@ -76,16 +76,26 @@ The screenshots below were taken as per the steps above
 ## Endpoints
 
 ### Load Balancer Endpoints
+-** Before adding any Server to the System
+```json
+Response:
+{
+        "N": 0,
+        "replicas": []
+}
+ ```
+-** Screenshot below showing list of Servers before adding Servers
+![image](https://github.com/user-attachments/assets/d0b612b9-882e-4ce1-abc4-4058dc07e39a)
 
 - **`/rep` (GET):** Returns the status of the replicas managed by the load balancer.
     ```json
     Response:
     {
         "message": {
-            "N": 3,
-            "replicas": ["Server 1", "Server 2", "Server 3"]
+            "N": 1 i.e, 3,
+            "replicas": [ i.e. "Server 1", "Server 2", "Server 3"]
         },
-        "status": "successful"
+        "status": "i.e. successful"
     }
     ```
 
@@ -106,6 +116,11 @@ The screenshots below were taken as per the steps above
         "status": "successful"
     }
     ```
+- ** Screenshot below shows output in Postoman when 1 server is added to the system:
+![image](https://github.com/user-attachments/assets/31d12672-c188-4c76-98b2-5d0831081e6e)
+
+- ** Screenshot below shows output in Postoman when 3 servers are added to the system:
+![image](https://github.com/user-attachments/assets/8be7125d-1589-4127-8468-d4a253ad43a4)
 
 - **`/rm` (DELETE):** Removes server instances.
     ```json
@@ -124,7 +139,7 @@ The screenshots below were taken as per the steps above
         "status": "successful"
     }
     ```
-
+-** Mapping
 - **`/<path>` (GET):** Routes the request to a server replica. Example: `/home`
     ```json
     Response:
@@ -133,6 +148,14 @@ The screenshots below were taken as per the steps above
         "status": "successful"
     }
     ```
+- ** Screenshot showing Mapped request to server 1 in Postman
+![image](https://github.com/user-attachments/assets/1ac23e28-4330-4688-bbd3-dbb2d0ea7e32)
+
+- ** Screenshot showing Mapped request to server 2 in Postman
+![image](https://github.com/user-attachments/assets/e48774af-090b-47fa-b944-c2a491af26f4)
+
+- ** Screenshot showing Mapped 3rd Request in Postman
+    ![image](https://github.com/user-attachments/assets/65d031ac-a160-402f-aba3-92a4901113ca)
 
 ### Server Endpoints
 
@@ -144,11 +167,16 @@ The screenshots below were taken as per the steps above
         "status": "successful"
     }
     ```
+- Screenshot of **`/home` running as tested on Postman.
+  ![image](https://github.com/user-attachments/assets/be812886-666d-4d00-b6ad-3e3f31f184a7)
 
 - **`/heartbeat` (GET):** Sends heartbeat responses to monitor server status.
     ```json
-    Response: [EMPTY]
+    Response:
+    Hello 200
     ```
+- Screenshot when Accessing **`/heartbeat` through Postman:
+![image](https://github.com/user-attachments/assets/738c7729-0942-41c4-9de8-4eefd0f7be30)
 
 ## Consistent Hashing
 
