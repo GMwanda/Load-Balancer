@@ -45,34 +45,19 @@ def home():
 def heartbeat():
     return "Hello 200"
 
-    # @app.route('/map_request/<int:request_id>', methods=['GET'])
-    # def map_request(request_id):
-    #     # request_id = request.args.get('id', type=int)
-    #     # print(request_id)
-    #
-    #     if request_id is None:
-    #         return jsonify({"error": "Request ID is required"}), 400
-    #     try:
-    #         server_id = consistent_hash_map.map_request()
-    #         log_to_browser(f"Request {request_id} mapped to server {server_id}")
-    #         return jsonify({"request_id": request_id, "mapped_server": server_id}), 200
-    #     except Exception as e:
-    #         return jsonify({"error": str(e)}), 500
 
+@app.route('/map_request', methods=['GET'])
+def map_request():
+    request_id = request.args.get('id', type=int)
+    print(request_id)
 
-@app.route('/map_request/<int:request_id>', methods=['GET'])
-def map_request(request_id):
+    if request_id is None:
+        return jsonify({"error": "Request ID is required"}), 400
     try:
-        # Map the request ID to a server using consistent hashing
-        server_id = consistent_hash_map.map_request(request_id)
-
-        # Log the mapping (assuming log_to_browser is defined elsewhere)
+        server_id = consistent_hash_map.map_request()
         log_to_browser(f"Request {request_id} mapped to server {server_id}")
-
-        # Return the mapped server information
         return jsonify({"request_id": request_id, "mapped_server": server_id}), 200
     except Exception as e:
-        # Return an error message if an exception occurs
         return jsonify({"error": str(e)}), 500
 
 
