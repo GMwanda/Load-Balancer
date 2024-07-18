@@ -76,7 +76,7 @@ The screenshots below were taken as per the steps and usage above
 ## Endpoints
 
 ### Load Balancer Endpoints
--** Before adding any Server to the System
+### Before adding any Server to the System
 ```json
 Response:
 {
@@ -84,7 +84,7 @@ Response:
         "replicas": []
 }
  ```
--** Screenshot below showing list of Servers before adding Servers
+### Screenshot below showing list of Servers before adding Servers
 ![image](https://github.com/user-attachments/assets/d0b612b9-882e-4ce1-abc4-4058dc07e39a)
 
 - **`/rep` (GET):** Returns the status of the replicas managed by the load balancer.
@@ -116,10 +116,10 @@ Response:
         "status": "successful"
     }
     ```
-- ** Screenshot below shows output in Postoman when 1 server is added to the system:
+### Screenshot below shows output in Postoman when 1 server is added to the system:
 ![image](https://github.com/user-attachments/assets/31d12672-c188-4c76-98b2-5d0831081e6e)
 
-- ** Screenshot below shows output in Postoman when 3 servers are added to the system:
+### Screenshot below shows output in Postoman when 3 servers are added to the system:
 ![image](https://github.com/user-attachments/assets/8be7125d-1589-4127-8468-d4a253ad43a4)
 
 - **`/rm` (DELETE):** Removes server instances.
@@ -139,7 +139,7 @@ Response:
         "status": "successful"
     }
     ```
--** Mapping
+### Mapping
 - **`/<path>` (GET):** Routes the request to a server replica. Example: `/home`
     ```json
     Response:
@@ -148,13 +148,13 @@ Response:
         "status": "successful"
     }
     ```
-- ** Screenshot showing Mapped request to server 1 in Postman
+- Screenshot showing Mapped request to server 1 in Postman
 ![image](https://github.com/user-attachments/assets/1ac23e28-4330-4688-bbd3-dbb2d0ea7e32)
 
-- ** Screenshot showing Mapped request to server 2 in Postman
+- Screenshot showing Mapped request to server 2 in Postman
 ![image](https://github.com/user-attachments/assets/e48774af-090b-47fa-b944-c2a491af26f4)
 
-- ** Screenshot showing Mapped 3rd Request in Postman
+- Screenshot showing Mapped 3rd Request in Postman
     ![image](https://github.com/user-attachments/assets/65d031ac-a160-402f-aba3-92a4901113ca)
 
 ### Server Endpoints
