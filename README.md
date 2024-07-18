@@ -119,7 +119,7 @@ Response:
 ### Screenshot below shows output in Postoman when 1 server is added to the system:
 ![image](https://github.com/user-attachments/assets/31d12672-c188-4c76-98b2-5d0831081e6e)
 
-### Screenshot below shows output in Postoman when 3 servers are added to the system:
+### Screenshot below shows output in Postman when 3 servers are added to the system:
 ![image](https://github.com/user-attachments/assets/8be7125d-1589-4127-8468-d4a253ad43a4)
 
 - **`/rm` (DELETE):** Removes server instances.
